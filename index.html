@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>フラッシュ・リーダー</title>
+    <title>よむよむくん</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -123,6 +123,13 @@
                 <line x1="12" y1="4" x2="12" y2="20"></line>
             </Icon>
         );
+        const TextSize = ({ className }) => (
+            <Icon className={className}>
+                <path d="M4 7V4h16v3"></path>
+                <path d="M9 20h6"></path>
+                <path d="M12 4v16"></path>
+            </Icon>
+        );
 
         // --- メインアプリコンポーネント ---
         function App() {
@@ -137,6 +144,7 @@
             const [duration, setDuration] = useState(10); // 秒
             const [splitType, setSplitType] = useState('newline'); // 'newline' | 'period'
             const [fontType, setFontType] = useState('mincho'); // 'mincho' | 'gothic'
+            const [fontSizeLevel, setFontSizeLevel] = useState(3); // 1-5段階
 
             // タイマー用のRef
             const timerRef = useRef(null);
@@ -228,13 +236,25 @@
             // フォントスタイルの取得
             const getFontClass = () => fontType === 'mincho' ? 'font-mincho' : 'font-gothic';
 
+            // フォントサイズのクラス取得
+            const getFontSizeClass = () => {
+                switch (fontSizeLevel) {
+                    case 1: return "text-xl md:text-2xl lg:text-3xl"; // 小
+                    case 2: return "text-2xl md:text-3xl lg:text-4xl"; // やや小
+                    case 3: return "text-4xl md:text-5xl lg:text-6xl"; // 中（デフォルト）
+                    case 4: return "text-5xl md:text-6xl lg:text-7xl"; // 大
+                    case 5: return "text-6xl md:text-7xl lg:text-8xl"; // 特大
+                    default: return "text-4xl md:text-5xl lg:text-6xl";
+                }
+            };
+
             // 画面：入力画面
             const renderInputScreen = () => (
                 <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-xl shadow-lg animate-fade-in my-8">
                 <div className="mb-6 text-center">
                     <h1 className="text-2xl font-bold text-gray-800 flex items-center justify-center gap-2">
                     <FileText className="w-6 h-6 text-indigo-600" />
-                    フラッシュ・リーダー
+                    よむよむくん
                     </h1>
                     <p className="text-gray-500 mt-2">文章を入力して、自動再生で読み進めましょう</p>
                 </div>
@@ -300,9 +320,30 @@
                         </button>
                         </div>
                     </div>
+
+                    {/* 文字サイズ設定 */}
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                        <TextSize className="w-4 h-4" />
+                        文字サイズ: <span className="text-indigo-600 font-bold">レベル{fontSizeLevel}</span>
+                        </label>
+                        <input
+                        type="range"
+                        min="1"
+                        max="5"
+                        step="1"
+                        value={fontSizeLevel}
+                        onChange={(e) => setFontSizeLevel(Number(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400 mt-1">
+                        <span>小</span>
+                        <span>大</span>
+                        </div>
+                    </div>
                     
-                    {/* フォント設定 (新規追加) */}
-                    <div className="md:col-span-2">
+                    {/* フォント設定 */}
+                    <div>
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                         <Type className="w-4 h-4" />
                         フォント
@@ -316,7 +357,7 @@
                                 : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                             }`}
                         >
-                            明朝体 (Mincho)
+                            明朝体
                         </button>
                         <button
                             onClick={() => setFontType('gothic')}
@@ -326,7 +367,7 @@
                                 : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                             }`}
                         >
-                            ゴシック体 (Gothic)
+                            ゴシック
                         </button>
                         </div>
                     </div>
@@ -387,7 +428,7 @@
                     <div className="flex-1 flex items-center justify-center p-8 relative">
                     <div className="w-full max-w-4xl text-left animate-fade-in-up px-16 md:px-24"> 
                         <div 
-                        className="text-4xl md:text-5xl lg:text-6xl font-bold leading-relaxed tracking-wide text-white drop-shadow-lg"
+                        className={`${getFontSizeClass()} font-bold leading-loose tracking-wide text-white drop-shadow-lg`}
                         style={{ 
                             minHeight: '20vh',
                             display: 'flex',
