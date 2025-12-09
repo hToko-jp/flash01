@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フラッシュ・リーダー</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (JSX変換用) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: BIZ UDMincho & BIZ UDGothic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&family=BIZ+UDMincho:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* フォントクラスの定義 */
+        .font-mincho {
+            font-family: 'BIZ UDMincho', serif;
+        }
+        .font-gothic {
+            font-family: 'BIZ UDGothic', sans-serif;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .animate-fade-in-up {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        /* スクロールバーのカスタマイズ（任意） */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- アイコンコンポーネント (Lucideの代わり) ---
+        const Icon = ({ children, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+
+        const Play = ({ className, fill }) => (
+            <Icon className={className}>
+                <polygon points="5 3 19 12 5 21 5 3" fill={fill ? "currentColor" : "none"}></polygon>
+            </Icon>
+        );
+        const Pause = ({ className, fill }) => (
+            <Icon className={className}>
+                <rect x="6" y="4" width="4" height="16" fill={fill ? "currentColor" : "none"}></rect>
+                <rect x="14" y="4" width="4" height="16" fill={fill ? "currentColor" : "none"}></rect>
+            </Icon>
+        );
+        const RotateCcw = ({ className }) => (
+            <Icon className={className}>
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"></path>
+                <path d="M3 3v9h9"></path>
+            </Icon>
+        );
+        const ChevronLeft = ({ className }) => (
+            <Icon className={className}>
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </Icon>
+        );
+        const ChevronRight = ({ className }) => (
+            <Icon className={className}>
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </Icon>
+        );
+        const Settings = ({ className }) => (
+            <Icon className={className}>
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+            </Icon>
+        );
+        const Clock = ({ className }) => (
+            <Icon className={className}>
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </Icon>
+        );
+        const FileText = ({ className }) => (
+            <Icon className={className}>
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <line x1="10" y1="9" x2="8" y2="9"></line>
+            </Icon>
+        );
+        const Type = ({ className }) => (
+            <Icon className={className}>
+                <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                <line x1="9" y1="20" x2="15" y2="20"></line>
+                <line x1="12" y1="4" x2="12" y2="20"></line>
+            </Icon>
+        );
+
+        // --- メインアプリコンポーネント ---
+        function App() {
+            // アプリの状態管理
+            const [mode, setMode] = useState('input'); // 'input' | 'playing' | 'finished'
+            const [inputText, setInputText] = useState('');
+            const [cards, setCards] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [isPlaying, setIsPlaying] = useState(false);
+            
+            // 設定
+            const [duration, setDuration] = useState(10); // 秒
+            const [splitType, setSplitType] = useState('newline'); // 'newline' | 'period'
+            const [fontType, setFontType] = useState('mincho'); // 'mincho' | 'gothic'
+
+            // タイマー用のRef
+            const timerRef = useRef(null);
+
+            // カード生成ロジック
+            const startFlashcards = () => {
+                if (!inputText.trim()) return;
+
+                let generatedCards = [];
+                
+                if (splitType === 'newline') {
+                // 改行で分割し、空行を除去
+                generatedCards = inputText.split('\n').filter(line => line.trim() !== '');
+                } else {
+                // 句点（。）や改行で分割
+                const cleanText = inputText.replace(/\r\n/g, '\n');
+                // 日本語の句点、または英語のピリオド+スペースなどで分割
+                generatedCards = cleanText
+                    .split(/[。.\n]+/)
+                    .filter(line => line.trim() !== '');
+                }
+
+                if (generatedCards.length === 0) return;
+
+                setCards(generatedCards);
+                setCurrentIndex(0);
+                setMode('playing');
+                setIsPlaying(true);
+            };
+
+            // タイマー制御
+            useEffect(() => {
+                if (isPlaying && mode === 'playing') {
+                timerRef.current = setInterval(() => {
+                    setCurrentIndex((prev) => {
+                    if (prev + 1 >= cards.length) {
+                        setIsPlaying(false);
+                        setMode('finished');
+                        return prev;
+                    }
+                    return prev + 1;
+                    });
+                }, duration * 1000);
+                } else {
+                clearInterval(timerRef.current);
+                }
+
+                return () => clearInterval(timerRef.current);
+            }, [isPlaying, mode, cards.length, duration]);
+
+            // 操作関数
+            const togglePlay = () => setIsPlaying(!isPlaying);
+            
+            const goNext = () => {
+                if (currentIndex < cards.length - 1) {
+                setCurrentIndex(currentIndex + 1);
+                // 手動操作時はタイマーをリセットして再開
+                if (isPlaying) {
+                    clearInterval(timerRef.current);
+                }
+                } else {
+                setMode('finished');
+                setIsPlaying(false);
+                }
+            };
+
+            const goPrev = () => {
+                if (currentIndex > 0) {
+                setCurrentIndex(currentIndex - 1);
+                if (isPlaying) {
+                    clearInterval(timerRef.current);
+                }
+                }
+            };
+
+            const reset = () => {
+                setIsPlaying(false);
+                setMode('input');
+                setCurrentIndex(0);
+                setCards([]);
+            };
+
+            const restart = () => {
+                setCurrentIndex(0);
+                setMode('playing');
+                setIsPlaying(true);
+            };
+
+            // フォントスタイルの取得
+            const getFontClass = () => fontType === 'mincho' ? 'font-mincho' : 'font-gothic';
+
+            // 画面：入力画面
+            const renderInputScreen = () => (
+                <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-xl shadow-lg animate-fade-in my-8">
+                <div className="mb-6 text-center">
+                    <h1 className="text-2xl font-bold text-gray-800 flex items-center justify-center gap-2">
+                    <FileText className="w-6 h-6 text-indigo-600" />
+                    フラッシュ・リーダー
+                    </h1>
+                    <p className="text-gray-500 mt-2">文章を入力して、自動再生で読み進めましょう</p>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">読む文章</label>
+                    <textarea
+                        className={`w-full h-48 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-shadow ${getFontClass()}`}
+                        placeholder="ここに文章を貼り付けてください...&#13;&#10;例：&#13;&#10;吾輩は猫である。&#13;&#10;名前はまだ無い。&#13;&#10;どこで生れたかとんと見当がつかぬ。"
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                    />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-lg">
+                    {/* 秒数設定 */}
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                        <Clock className="w-4 h-4" />
+                        表示時間: <span className="text-indigo-600 font-bold">{duration}秒</span>
+                        </label>
+                        <input
+                        type="range"
+                        min="1"
+                        max="30"
+                        value={duration}
+                        onChange={(e) => setDuration(Number(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400 mt-1">
+                        <span>1秒</span>
+                        <span>30秒</span>
+                        </div>
+                    </div>
+
+                    {/* 分割設定 */}
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                        <Settings className="w-4 h-4" />
+                        分割方法
+                        </label>
+                        <div className="flex gap-2">
+                        <button
+                            onClick={() => setSplitType('newline')}
+                            className={`flex-1 py-2 px-3 text-sm rounded-md border transition-colors ${
+                            splitType === 'newline'
+                                ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
+                                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                            }`}
+                        >
+                            改行ごと
+                        </button>
+                        <button
+                            onClick={() => setSplitType('period')}
+                            className={`flex-1 py-2 px-3 text-sm rounded-md border transition-colors ${
+                            splitType === 'period'
+                                ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
+                                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                            }`}
+                        >
+                            句点(。)ごと
+                        </button>
+                        </div>
+                    </div>
+                    
+                    {/* フォント設定 (新規追加) */}
+                    <div className="md:col-span-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                        <Type className="w-4 h-4" />
+                        フォント
+                        </label>
+                        <div className="flex gap-2">
+                        <button
+                            onClick={() => setFontType('mincho')}
+                            className={`flex-1 py-2 px-3 text-sm rounded-md border transition-colors font-mincho ${
+                            fontType === 'mincho'
+                                ? 'bg-indigo-100 border-indigo-500 text-indigo-700 ring-1 ring-indigo-500'
+                                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                            }`}
+                        >
+                            明朝体 (Mincho)
+                        </button>
+                        <button
+                            onClick={() => setFontType('gothic')}
+                            className={`flex-1 py-2 px-3 text-sm rounded-md border transition-colors font-gothic ${
+                            fontType === 'gothic'
+                                ? 'bg-indigo-100 border-indigo-500 text-indigo-700 ring-1 ring-indigo-500'
+                                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                            }`}
+                        >
+                            ゴシック体 (Gothic)
+                        </button>
+                        </div>
+                    </div>
+
+                    </div>
+
+                    <button
+                    onClick={startFlashcards}
+                    disabled={!inputText.trim()}
+                    className={`w-full py-4 rounded-lg font-bold text-lg shadow-md transition-all flex items-center justify-center gap-2 ${
+                        inputText.trim()
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 transform hover:-translate-y-0.5'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                    >
+                    <Play className="w-5 h-5" fill={true} />
+                    スタート
+                    </button>
+                </div>
+                </div>
+            );
+
+            // 画面：プレイ画面
+            const renderPlayerScreen = () => {
+                const progress = ((currentIndex + 1) / cards.length) * 100;
+                
+                return (
+                <div className={`w-full h-screen flex flex-col bg-gray-900 text-white overflow-hidden absolute top-0 left-0 ${getFontClass()}`}>
+                    {/* ヘッダー */}
+                    <div className="p-4 flex items-center justify-between bg-gray-800 shadow-md z-10 font-sans">
+                    <div className="flex items-center gap-4">
+                        <button 
+                        onClick={reset}
+                        className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 text-sm"
+                        >
+                        <RotateCcw className="w-4 h-4" />
+                        終了
+                        </button>
+                        <span className="text-sm font-mono text-gray-300">
+                        {currentIndex + 1} / {cards.length}
+                        </span>
+                    </div>
+                    
+                    {/* プログレスバー */}
+                    <div className="flex-1 mx-6 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                        className="h-full bg-indigo-500 transition-all duration-300 ease-out"
+                        style={{ width: `${progress}%` }}
+                        />
+                    </div>
+
+                    <div className="w-20 text-right text-sm font-bold text-indigo-400">
+                        {duration}秒/枚
+                    </div>
+                    </div>
+
+                    {/* メインカード表示エリア */}
+                    <div className="flex-1 flex items-center justify-center p-8 relative">
+                    <div className="w-full max-w-4xl text-left animate-fade-in-up px-16 md:px-24"> 
+                        <div 
+                        className="text-4xl md:text-5xl lg:text-6xl font-bold leading-relaxed tracking-wide text-white drop-shadow-lg"
+                        style={{ 
+                            minHeight: '20vh',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start'
+                        }}
+                        >
+                        {cards[currentIndex]}
+                        </div>
+                    </div>
+
+                    {/* 前へ/次へ ボタンエリア (画面左右) */}
+                    <button 
+                        onClick={goPrev}
+                        disabled={currentIndex === 0}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-4 text-gray-600 hover:text-white disabled:opacity-0 transition-colors"
+                    >
+                        <ChevronLeft className="w-12 h-12" />
+                    </button>
+                    
+                    <button 
+                        onClick={goNext}
+                        disabled={currentIndex === cards.length - 1}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-4 text-gray-600 hover:text-white disabled:opacity-0 transition-colors"
+                    >
+                        <ChevronRight className="w-12 h-12" />
+                    </button>
+                    </div>
+
+                    {/* コントロールバー */}
+                    <div className="h-24 bg-gray-800 flex items-center justify-center gap-8 pb-4 font-sans">
+                    <button 
+                        onClick={goPrev}
+                        disabled={currentIndex === 0}
+                        className="p-3 rounded-full hover:bg-gray-700 disabled:opacity-30 transition-colors"
+                    >
+                        <ChevronLeft className="w-6 h-6" />
+                    </button>
+
+                    <button 
+                        onClick={togglePlay}
+                        className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-500 hover:scale-105 transition-all"
+                    >
+                        {isPlaying ? (
+                        <Pause className="w-8 h-8" fill={true} />
+                        ) : (
+                        <Play className="w-8 h-8 ml-1" fill={true} />
+                        )}
+                    </button>
+
+                    <button 
+                        onClick={goNext}
+                        disabled={currentIndex === cards.length - 1}
+                        className="p-3 rounded-full hover:bg-gray-700 disabled:opacity-30 transition-colors"
+                    >
+                        <ChevronRight className="w-6 h-6" />
+                    </button>
+                    </div>
+                </div>
+                );
+            };
+
+            // 画面：完了画面
+            const renderFinishedScreen = () => (
+                <div className="w-full max-w-md mx-auto p-8 bg-white rounded-xl shadow-xl text-center mt-20 animate-fade-in">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Play className="w-10 h-10 text-green-600 ml-1" fill={true} />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">読み終わりました！</h2>
+                <p className="text-gray-600 mb-8">すべてのカードを表示しました。</p>
+                
+                <div className="flex flex-col gap-3">
+                    <button
+                    onClick={restart}
+                    className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                    <RotateCcw className="w-5 h-5" />
+                    もう一度読む
+                    </button>
+                    <button
+                    onClick={reset}
+                    className="w-full py-3 bg-white border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50 transition-colors"
+                    >
+                    新しい文章を入力
+                    </button>
+                </div>
+                </div>
+            );
+
+            return (
+                <div className={`min-h-screen ${getFontClass()}`}>
+                {mode === 'input' && renderInputScreen()}
+                {mode === 'playing' && renderPlayerScreen()}
+                {mode === 'finished' && (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        {renderFinishedScreen()}
+                    </div>
+                )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
